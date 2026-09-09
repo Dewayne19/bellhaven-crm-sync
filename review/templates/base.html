@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Bellhaven sync review{% endblock %}</title>
+<style>
+  :root {
+    --ink: #1f2328; --muted: #6b7280; --line: #e3e6ea; --bg: #f6f7f9;
+    --card: #ffffff; --ok: #1a7f4b; --warn: #9a6700; --bad: #b42318;
+    --accent: #2557a7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 14px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid var(--line);
+    padding: 14px 24px; display: flex; align-items: center; gap: 20px;
+    flex-wrap: wrap; position: sticky; top: 0; z-index: 5;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header nav a { color: var(--accent); text-decoration: none; margin-right: 14px; }
+  .spacer { flex: 1; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  .tally { color: var(--muted); font-size: 13px; }
+  .tally b { color: var(--ink); }
+
+  .group { margin-bottom: 34px; }
+  .group > h2 { font-size: 15px; margin: 0 0 4px; }
+  .group > p { margin: 0 0 14px; color: var(--muted); max-width: 70ch; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 18px; margin-bottom: 12px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  .why { color: var(--muted); margin: 0 0 12px; }
+  .badge {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 10px;
+    border: 1px solid var(--line); color: var(--muted); margin-left: 6px;
+    vertical-align: 1px; font-weight: 500;
+  }
+  .badge.high { color: var(--ok); border-color: #b7e0c6; background: #f0fbf4; }
+  .badge.medium { color: var(--warn); border-color: #e8d59a; background: #fffbef; }
+  .badge.low { color: var(--muted); background: #f6f7f9; }
+
+  table.diff { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+  table.diff th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted); font-weight: 600;
+    border-bottom: 1px solid var(--line); padding: 4px 8px 4px 0;
+  }
+  table.diff td { padding: 5px 8px 5px 0; vertical-align: top; border-bottom: 1px solid #f2f4f6; }
+  td.old { color: var(--bad); }
+  td.new { color: var(--ok); }
+  td.field { width: 130px; color: var(--muted); }
+  .tag { font-size: 11px; color: var(--muted); }
+
+  details { margin-bottom: 10px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  pre {
+    background: #0f172a; color: #e6edf7; padding: 12px 14px; border-radius: 5px;
+    overflow-x: auto; font-size: 12px; line-height: 1.45; margin: 8px 0 0;
+  }
+  .ev { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+  .ev section { border: 1px solid var(--line); border-radius: 5px; padding: 10px 12px; }
+  .ev h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
+           letter-spacing: .06em; color: var(--muted); }
+  .ev dl { margin: 0; display: grid; grid-template-columns: 88px 1fr; gap: 2px 10px; }
+  .ev dt { color: var(--muted); font-size: 12px; }
+  .ev dd { margin: 0; font-size: 12px; word-break: break-word; }
+
+  button, .btn {
+    font: inherit; padding: 5px 12px; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+  }
+  button.approve { background: var(--ok); border-color: var(--ok); color: #fff; }
+  button.reject { background: #fff; border-color: #e6b7b0; color: var(--bad); }
+  button.apply { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .actions { display: flex; gap: 8px; align-items: center; }
+  .bulk { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
+
+  .flash { padding: 10px 14px; border-radius: 5px; margin-bottom: 18px; }
+  .flash.ok { background: #f0fbf4; border: 1px solid #b7e0c6; color: var(--ok); }
+  .flash.warn { background: #fffbef; border: 1px solid #e8d59a; color: var(--warn); }
+  .flash.error { background: #fef3f2; border: 1px solid #f0c2bb; color: var(--bad); }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  @media (max-width: 720px) { .ev { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bellhaven sync</h1>
+  <nav>
+    <a href="{{ url_for('queue') }}">Review queue</a>
+    <a href="{{ url_for('decided') }}">Decided</a>
+  </nav>
+  <div class="spacer"></div>
+  <div class="tally">
+    <b>{{ counts.get('pending', 0) }}</b> pending &middot;
+    <b>{{ counts.get('approved', 0) }}</b> approved &middot;
+    <b>{{ counts.get('rejected', 0) }}</b> rejected &middot;
+    <b>{{ counts.get('applied', 0) }}</b> applied
+  </div>
+</header>
+<div class="wrap">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+  {% block body %}{% endblock %}
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{% macro card(item, selectable=True) %}
+<div class="card">
+  <h3>
+    {% if selectable %}<input type="checkbox" name="key" value="{{ item.key }}" form="queue-form">{% endif %}
+    {{ item.title }}
+    <span class="badge {{ item.confidence }}">{{ item.confidence }} confidence</span>
+    {% if item.tier %}<span class="badge">matched on {{ item.tier }}{% if item.score %} &middot; {{ '%.2f'|format(item.score) }}{% endif %}</span>{% endif %}
+  </h3>
+  <p class="why">{{ item.rationale }}</p>
+
+  {% if item.changes %}
+  <table class="diff">
+    <tr><th>Field</th><th>Currently in CRM</th><th>Proposed</th></tr>
+    {% for row in item.changes %}
+    <tr>
+      <td class="field">{{ row.field }}{% if row.label %} <span class="tag">({{ row.label }})</span>{% endif %}</td>
+      <td class="old">{% if row.creating %}<span class="tag">new account</span>{% else %}{{ row.old if row.old not in (None, '') else '—' }}{% endif %}</td>
+      <td class="new">{{ row.new if row.new not in (None, '') else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <div class="ev">
+    <section>
+      <h4>Website</h4>
+      {% set site = item.evidence.site %}
+      {% if site %}
+      <dl>
+        <dt>Name</dt><dd>{{ site.name }}</dd>
+        <dt>Address</dt><dd>{{ site.street }}<br>{{ site.city }}, {{ site.state }} {{ site.zip }}</dd>
+        <dt>Care</dt><dd>{{ site.care_types|join(', ') or '—' }}</dd>
+        <dt>Phone</dt><dd>{{ site.phone or '—' }}</dd>
+        {% if site.url %}<dt>Source</dt><dd><a href="{{ site.url }}" target="_blank" rel="noreferrer">listing</a></dd>{% endif %}
+      </dl>
+      {% else %}
+      <p class="tag">Not listed on the website.</p>
+      {% endif %}
+    </section>
+    <section>
+      <h4>CRM</h4>
+      {% set rec = item.evidence.crm %}
+      {% if rec %}
+      <dl>
+        <dt>Name</dt><dd>{{ rec.name }}</dd>
+        <dt>Account</dt><dd>{{ rec.account_id }}</dd>
+        <dt>Parent</dt><dd>{{ rec.parent_name or 'none' }}</dd>
+        <dt>Address</dt><dd>{{ rec.billing_street }}<br>{{ rec.billing_city }}, {{ rec.billing_state }} {{ rec.billing_zip }}</dd>
+        <dt>Care</dt><dd>{{ rec.care_type or '—' }}</dd>
+        <dt>Status</dt><dd>{{ rec.status }}</dd>
+        <dt>Revenue</dt><dd>{{ rec.lifetime_revenue }}</dd>
+        <dt>Open AR</dt><dd>{{ rec.outstanding_ar }}</dd>
+      </dl>
+      {% else %}
+      <p class="tag">No matching account.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  {% if item.evidence.candidates %}
+  <details>
+    <summary>{{ item.evidence.candidates|length }} other candidate(s) considered</summary>
+    <table class="diff">
+      <tr><th>Name</th><th>Address</th><th>Parent</th><th>Score</th></tr>
+      {% for c in item.evidence.candidates %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.street or c.billing_street }}, {{ c.city or c.billing_city }} {{ c.state or c.billing_state }} {{ c.zip or c.billing_zip }}</td>
+        <td>{{ c.parent_name or 'none' }}</td>
+        <td>{{ '%.2f'|format(c.score) if c.score is defined and c.score else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </details>
+  {% endif %}
+
+  <details>
+    <summary>API calls this will make</summary>
+    <pre>{% for call in item.calls %}{{ call.method }} {{ call.path }}
+{{ call.body|tojson(indent=2) }}
+{% endfor %}</pre>
+  </details>
+</div>
+{% endmacro %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% from "_card.html" import card %}
+
+{% block title %}Decided &middot; Bellhaven sync{% endblock %}
+
+{% block body %}
+  <div class="group">
+    <h2>Approved <span class="badge">{{ approved|length }}</span></h2>
+    <p>Approved changes. Those with an applied timestamp are already in the CRM.</p>
+    {% for item in approved %}
+      {{ card(item, selectable=False) }}
+      {% if item.applied_at %}
+        <p class="tally" style="margin:-6px 0 16px 2px">Applied {{ item.applied_at }}.</p>
+      {% else %}
+        <p class="tally" style="margin:-6px 0 16px 2px">Not yet applied.</p>
+      {% endif %}
+    {% else %}
+      <p class="empty">Nothing approved yet.</p>
+    {% endfor %}
+  </div>
+
+  <div class="group">
+    <h2>Rejected <span class="badge">{{ rejected|length }}</span></h2>
+    <p>Rejected proposals are remembered, so a later run will not raise them again.</p>
+    {% for item in rejected %}
+      {{ card(item, selectable=False) }}
+    {% else %}
+      <p class="empty">Nothing rejected.</p>
+    {% endfor %}
+  </div>
+
+  {% if obsolete %}
+  <div class="group">
+    <h2>Retired <span class="badge">{{ obsolete|length }}</span></h2>
+    <p>These stopped being proposed before anyone decided on them, usually
+       because the underlying record was corrected another way.</p>
+    <div class="card">
+      <table class="diff">
+        <tr><th>Kind</th><th>Proposal</th><th>Retired</th></tr>
+        {% for item in obsolete %}
+        <tr><td>{{ item.kind }}</td><td>{{ item.title }}</td><td>{{ item.decided_at }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  {% endif %}
+{% endblock %}

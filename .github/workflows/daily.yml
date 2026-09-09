@@ -1,0 +1,58 @@
+name: daily-sync
+
+# 07:00 America/New_York. GitHub cron is UTC and does not follow daylight
+# saving, so this is 07:00 EDT and 06:00 EST. Close enough for a queue a
+# human looks at during the working day.
+on:
+  schedule:
+    - cron: "0 11 * * *"
+  workflow_dispatch:
+
+# Only one sync at a time, so two runs cannot both refresh the ledger.
+concurrency:
+  group: bellhaven-sync
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # The decision ledger has to survive between runs or every morning would
+      # re-propose work that was already rejected. A cache is the cheapest
+      # thing that does that here; in production this belongs in a real
+      # database rather than CI storage.
+      - name: Restore decision ledger
+        uses: actions/cache@v4
+        with:
+          path: data/state.sqlite
+          key: bellhaven-ledger-${{ github.run_id }}
+          restore-keys: bellhaven-ledger-
+
+      - name: Scrape, match and refresh the queue
+        env:
+          CRM_TOKEN: ${{ secrets.CRM_TOKEN }}
+        run: python pipeline.py propose
+
+      - name: Queue summary
+        run: python pipeline.py status | tee summary.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: review-queue
+          path: |
+            data/state.sqlite
+            data/site_snapshot.json
+            summary.txt
+          retention-days: 30
+
+# Note that this job only ever proposes. Applying changes stays a manual step
+# behind the review app, so an unattended run can never write to the CRM.

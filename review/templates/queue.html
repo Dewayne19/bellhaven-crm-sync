@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_card.html" import card %}
+
+{% block body %}
+  {% if last_run %}
+    <p class="tally" style="margin-top:0">
+      Last run {{ last_run.ran_at }} &middot; {{ last_run.communities }} communities scraped,
+      {{ last_run.accounts }} CRM accounts read, {{ last_run.proposed }} proposals
+      ({{ last_run.added }} new, {{ last_run.obsoleted }} retired).
+    </p>
+  {% endif %}
+
+  {% if approved_waiting %}
+    <form method="post" action="{{ url_for('apply_approved') }}" class="bulk">
+      <span>{{ approved_waiting }} approved change(s) are ready to write to the CRM.</span>
+      <button type="submit" name="dry_run" value="1">Dry run</button>
+      <button type="submit" class="apply">Apply to CRM</button>
+    </form>
+  {% endif %}
+
+  {% if not groups %}
+    <p class="empty">
+      Nothing to review.
+      {% if counts.get('applied') %}{{ counts.get('applied') }} change(s) already applied.{% endif %}
+    </p>
+  {% else %}
+    <form method="post" action="{{ url_for('decide') }}" id="queue-form">
+      <div class="bulk">
+        <button type="button" onclick="pick(true)">Select all</button>
+        <button type="button" onclick="pick(false)">Clear</button>
+        <div class="spacer"></div>
+        <button type="submit" name="decision" value="approved" class="approve">Approve selected</button>
+        <button type="submit" name="decision" value="rejected" class="reject">Reject selected</button>
+      </div>
+    </form>
+
+    {% for group in groups %}
+      <div class="group">
+        <h2>{{ group.title }} <span class="badge">{{ group.rows|length }}</span></h2>
+        <p>{{ group.blurb }}</p>
+        {% for item in group.rows %}
+          {{ card(item) }}
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <div class="bulk">
+      <button type="submit" form="queue-form" name="decision" value="approved" class="approve">Approve selected</button>
+      <button type="submit" form="queue-form" name="decision" value="rejected" class="reject">Reject selected</button>
+    </div>
+  {% endif %}
+
+  <script>
+    function pick(state) {
+      document.querySelectorAll('input[name="key"]').forEach(function (box) {
+        box.checked = state;
+      });
+    }
+  </script>
+{% endblock %}

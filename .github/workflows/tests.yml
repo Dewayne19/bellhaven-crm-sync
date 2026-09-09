@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # No network and no token needed: every test builds its accounts and
+      # communities in memory, so this runs on a fork or a pull request.
+      - run: python -m unittest discover -p "test_*.py" -v
